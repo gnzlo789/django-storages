@@ -1,8 +1,9 @@
 import os.path
 
 from django.core.files.base import ContentFile
+from django.core.files.storage import Storage
 from django.core.exceptions import ImproperlyConfigured
-from storages.compat import Storage
+import mimetypes
 
 try:
     import azure
@@ -57,8 +58,12 @@ class AzureStorage(Storage):
         return properties["content-length"]
 
     def _save(self, name, content):
-        self.connection.put_blob(self.azure_container, name,
-                                 content, "BlockBlob")
+        content.open(mode="rb")
+        data = content.read()
+        content_type = mimetypes.guess_type(name)[0]
+        #metadata = {"modified_time": "%f" % os.path.getmtime(content.name)}
+        self.connection.put_blob(self.azure_container, name, data, x_ms_blob_type='BlockBlob',
+                                   x_ms_blob_content_type=content_type, x_ms_meta_name_values=None)  # x_ms_meta_name_values=metadata)
         return name
 
     def url(self, name):
